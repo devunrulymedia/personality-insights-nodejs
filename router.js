@@ -15,6 +15,7 @@
  */
 
 const pick = require('object.pick');
+const cors = require('cors');
 const passport = require('passport');
 
 const twitterHelper = require('./helpers/twitter-helper');
@@ -23,11 +24,11 @@ const profileFromTweets = personalityHelper.profileFromTweets;
 const profileFromText = personalityHelper.profileFromText;
 
 module.exports = (app) => {
+  app.use(cors());
+
   // personality profile from text
   app.post('/api/profile/text', (req, res, next) =>
-    profileFromText(req.body)
-      .then(res.json.bind(res))
-      .catch(next)
+    profileFromText(req.body).then(res.json.bind(res)).catch(next)
   );
 
   // personality profile from tweets
@@ -37,11 +38,12 @@ module.exports = (app) => {
     }
 
     const user = {
-      credentials : req.user ? req.user.credentials : null,
+      credentials: req.user ? req.user.credentials : null,
       userId: req.body.userId,
     };
 
-    return twitterHelper.getTweets(user)
+    return twitterHelper
+      .getTweets(user)
       .then(profileFromTweets(req.body))
       .then(res.json.bind(res))
       .catch(next);
@@ -49,15 +51,19 @@ module.exports = (app) => {
 
   // twitter oauth
   app.get('/auth/twitter', passport.authenticate('twitter'));
-  app.get('/auth/twitter/callback', passport.authenticate('twitter', {
-    failureRedirect: '/#error',
-    successRedirect: '/?source=myself'
-  }));
+  app.get(
+    '/auth/twitter/callback',
+    passport.authenticate('twitter', {
+      failureRedirect: '/#error',
+      successRedirect: '/?source=myself',
+    })
+  );
 
   // home page
   app.get('/', (req, res) =>
     res.render('index', {
-      twitterUser: req.query.source ==='myself' && req.user ? req.user.profile : {},
+      twitterUser:
+        req.query.source === 'myself' && req.user ? req.user.profile : {},
       showTwitterButton: !!process.env.TWITTER_CONSUMER_KEY,
     })
   );
@@ -65,7 +71,7 @@ module.exports = (app) => {
   // sunburst
   app.post('/sunburst', (req, res) =>
     res.render('sunburst', {
-      sunburst: pick(req.body, ['profile', 'image'])
+      sunburst: pick(req.body, ['profile', 'image']),
     })
   );
 
